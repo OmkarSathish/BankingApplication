@@ -1,12 +1,12 @@
-import { Router } from 'express';
-import { tokenHandler } from '../middlewares/tokenAuth.js';
-import { Account } from '../models/accounts.js';
-import { User } from '../models/users.js';
-import mongoose from 'mongoose';
+import { Router } from "express";
+import { tokenHandler } from "../middlewares/tokenAuth.js";
+import { Account } from "../models/accounts.js";
+import { User } from "../models/users.js";
+import mongoose from "mongoose";
 
 const router = Router();
 
-router.get('/balance', tokenHandler, async (req, res) => {
+router.get("/balance", tokenHandler, async (req, res) => {
   const userId = req.userId;
 
   try {
@@ -21,8 +21,8 @@ router.get('/balance', tokenHandler, async (req, res) => {
   }
 });
 
-router.post('/transfer', tokenHandler, async (req, res) => {
-  const { receiver, amount } = req.body;
+router.post("/transfer", tokenHandler, async (req, res) => {
+  const { receiver, amount, pin } = req.body;
 
   try {
     const transactionSession = await mongoose.startSession();
@@ -34,12 +34,21 @@ router.post('/transfer', tokenHandler, async (req, res) => {
 
     if (!fromAcc) {
       transactionSession.abortTransaction();
-      return res.status(400).json({ message: 'Your account not found' });
+      return res
+        .status(400)
+        .json({ message: "Your account not found", status: "NOT OK" });
+    }
+
+    if (pin != fromAcc.pin) {
+      transactionSession.abortTransaction();
+      return res.status(400).json({ message: "Wrong Pin", status: "NOT OK" });
     }
 
     if (fromAcc.balance < amount) {
       transactionSession.abortTransaction();
-      return res.status(400).json({ message: 'Insufficient funds' });
+      return res
+        .status(400)
+        .json({ message: "Insufficient funds", status: "NOT OK" });
     }
 
     const toAcc = await Account.findOne({ userId: receiver }).session(
@@ -48,7 +57,9 @@ router.post('/transfer', tokenHandler, async (req, res) => {
 
     if (!toAcc) {
       transactionSession.abortTransaction();
-      return res.status(400).json({ message: 'Invalid receiver ID provided' });
+      return res
+        .status(400)
+        .json({ message: "Invalid receiver ID", status: "NOT OK" });
     }
 
     await Account.updateOne(
@@ -64,10 +75,12 @@ router.post('/transfer', tokenHandler, async (req, res) => {
 
     transactionSession.commitTransaction();
 
-    return res.status(200).json({ message: 'Transaction successful' });
+    return res
+      .status(200)
+      .json({ message: "Transaction successful", status: "OK" });
   } catch (error) {
     transactionSession.abortTransaction();
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message, status: "NOT OK" });
   }
 });
 

@@ -36,6 +36,7 @@ const profileUpdateInfoSchema = z.object({
   password: z.string().min(6).max(32).optional(),
   firstName: z.string().min(3).max(32).optional(),
   lastName: z.string().max(32).optional(),
+  pin: z.number().optional()
 });
 
 export function validateProfileUpdateInfo(req, res, next) {

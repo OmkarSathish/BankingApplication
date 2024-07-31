@@ -13,6 +13,7 @@ const Register = () => {
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [pin, setPin] = useState(0);
   const [password, setPassword] = useState('');
 
   return (
@@ -52,6 +53,14 @@ const Register = () => {
             setPassword(e.target.value);
           }}
         />
+        <InputField
+          labelName={'Pin'}
+          type={'password'}
+          placeholder={'XXXX'}
+          onChange={(e) => {
+            setPin(e.target.value);
+          }}
+        />
         <ActionButton
           text={'Register'}
           onClick={() => {
@@ -61,6 +70,7 @@ const Register = () => {
                 firstName,
                 lastName,
                 password,
+                pin: Number(pin)
               })
               .then((response) => {
                 localStorage.setItem('token', `Bearer ${response.data.token}`);

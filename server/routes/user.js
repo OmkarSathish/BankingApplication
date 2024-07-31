@@ -1,20 +1,20 @@
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { Router } from 'express';
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { Router } from "express";
 
-import { User } from '../models/users.js';
-import { Account } from '../models/accounts.js';
-import { tokenHandler } from '../middlewares/tokenAuth.js';
+import { User } from "../models/users.js";
+import { Account } from "../models/accounts.js";
+import { tokenHandler } from "../middlewares/tokenAuth.js";
 import {
   validateLoginInfo,
   validateProfileUpdateInfo,
   validateRegisterInfo,
-} from '../middlewares/zodValidation.js';
+} from "../middlewares/zodValidation.js";
 
 const router = Router();
 
-router.post('/register', validateRegisterInfo, async (req, res) => {
-  const { email, firstName, lastName, password } = req.body;
+router.post("/register", validateRegisterInfo, async (req, res) => {
+  const { email, firstName, lastName, password, pin } = req.body;
 
   try {
     let user = await User.findOne({ email });
@@ -38,6 +38,7 @@ router.post('/register', validateRegisterInfo, async (req, res) => {
 
     const account = new Account({
       userId: user._id,
+      pin: Number(pin),
       balance: Math.floor(Math.random() * 1000) + 1,
     });
 
@@ -51,7 +52,7 @@ router.post('/register', validateRegisterInfo, async (req, res) => {
   }
 });
 
-router.post('/login', validateLoginInfo, async (req, res) => {
+router.post("/login", validateLoginInfo, async (req, res) => {
   const { email, password } = req.body;
 
   try {
@@ -66,7 +67,7 @@ router.post('/login', validateLoginInfo, async (req, res) => {
     const isCorrect = await bcrypt.compare(password, user.password);
 
     if (!isCorrect) {
-      return res.status(400).json({ message: 'Invalid Credentials' });
+      return res.status(400).json({ message: "Invalid Credentials" });
     }
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
@@ -77,24 +78,26 @@ router.post('/login', validateLoginInfo, async (req, res) => {
   }
 });
 
-router.get('/details', tokenHandler, async (req, res) => {
+router.get("/details", tokenHandler, async (req, res) => {
   try {
     const user = await User.findById(req.userId);
 
     const { email, firstName, lastName } = user;
 
-    return res.status(200).json({ userId: user._id, email, firstName, lastName });
+    return res
+      .status(200)
+      .json({ userId: user._id, email, firstName, lastName });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 });
 
 router.put(
-  '/update',
+  "/update",
   tokenHandler,
   validateProfileUpdateInfo,
   async (req, res) => {
-    let { password, firstName, lastName } = req.body;
+    let { password, firstName, lastName, pin } = req.body;
 
     try {
       let updateUser = {};
@@ -116,6 +119,12 @@ router.put(
         new: true,
       });
 
+      if (pin !== null || pin !== undefined || pin != 0) {
+        await Account.findByIdAndUpdate(req.userId, {
+          pin,
+        });
+      }
+
       return res
         .status(200)
         .json({ firstName: user.firstName, lastName: user.lastName });
@@ -125,8 +134,8 @@ router.put(
   }
 );
 
-router.get('/bulk', tokenHandler, async (req, res) => {
-  const filter = req.query.filter || '';
+router.get("/bulk", tokenHandler, async (req, res) => {
+  const filter = req.query.filter || "";
 
   try {
     let users = await User.find({
